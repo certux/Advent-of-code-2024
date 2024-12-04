@@ -53,7 +53,7 @@ fun List<Long>.isValid(): Boolean {
     return true
 }
 
-fun List<Long>.isValidWithoutElement(i: Int): Boolean {
+tailrec fun List<Long>.isValidWithoutElement(i: Int): Boolean {
     if (i == this.size) return false
     if ((this.subList(0, i) + this.subList(i+1, this.size)).isValid()) return true
     return this.isValidWithoutElement(i+1)
