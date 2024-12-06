@@ -1,13 +1,11 @@
-import kotlin.math.abs
-
 typealias Maze = List<List<Boolean>>
 
 fun main() {
     val day = "06"
 
-    var dir: Direction? = null
-    var x: Int = -1
-    var y: Int = -1
+    var startDir: Direction = Direction.UP
+    var startX: Int = -1
+    var startY: Int = -1
 
     var sizeX: Int = -1
     var sizeY: Int = -1
@@ -18,8 +16,8 @@ fun main() {
         Direction.entries.forEach { direction ->
             val idx = row.indexOf(direction.dir)
             if (idx >= 0) {
-                x = idx
-                dir = direction
+                startX = idx
+                startDir = direction
                 return true
             }
         }
@@ -29,7 +27,7 @@ fun main() {
     fun readMaze(input: List<String>): Maze {
         val maze = input.mapIndexed { idx, row ->
             if (checkForGuard(row)) {
-                y = idx
+                startY = idx
             }
             row.map { it == '#' }
         }
@@ -50,10 +48,10 @@ fun main() {
         else findNewDirection(maze, curX, curY, dir.rotate())
     }
 
-    tailrec fun moveOne(maze: Maze, curX: Int, curY: Int, direction: Direction, steps: Int): Int {
-        print("Currently at ${curX+1}, ${curY+1} and moving ${direction.dir}")
-        if (curX < 0 || curX >= sizeX) return steps
-        if (curY < 0 || curY >= sizeY) return steps
+    tailrec fun moveOne(maze: Maze, curX: Int, curY: Int, direction: Direction, steps: Int): Pair<Int, Boolean> {
+        //print("Currently at ${curX+1}, ${curY+1} and moving ${direction.dir}")
+        if (curX < 0 || curX >= sizeX) return Pair(steps, false)
+        if (curY < 0 || curY >= sizeY) return Pair(steps, false)
 
         val newDir = findNewDirection(maze, curX, curY, direction)
         val newX = curX + newDir.moveX
@@ -69,28 +67,69 @@ fun main() {
         else if (alreadyVisited and newDir.bitmask > 0) {
             // already visited in same direction
             visited[currPos] = alreadyVisited or newDir.bitmask
-            return steps
+            return Pair(steps, true)
         }
         else { // already visited, but in different direction
             0
         }
-        println(", counting: $count")
+        //println(", counting: $count")
 
         return moveOne(maze, newX, newY, newDir, steps+count)
+    }
+
+    fun cloneMazeWithObstacle(maze: Maze, atX: Int, atY: Int): List<List<Boolean>> {
+
+        val newMaze = maze.mapIndexed { curY, row ->
+            if (curY == atY) {
+                row.toMutableList().apply { set(atX, true) }.toList()
+            } else {
+                row
+            }
+        }
+        return newMaze
+
     }
 
     fun part1(input: List<String>): Int {
 
         val maze = readMaze(input)
+        println("Found maze with sizeX: $sizeX, sizeY: $sizeY, count: ${sizeX * sizeY}")
 
-        println("Starting position: ${x+1}, ${y+1}, $dir")
+        println("Starting position: ${startX+1}, ${startY+1}, $startDir")
 
-        return moveOne(maze, x, y, dir!!, 0)
+        val result = moveOne(maze, startX, startY, startDir, 0)
+        println("Stuck in a loop: ${result.second}")
+        return result.first
     }
 
-    fun part2(input: List<String>): Long {
+    fun part2(input: List<String>): Int {
+        val maze = readMaze(input)
+        println("Starting part 2 at $startX, $startY, $startDir")
 
-        return 0L
+        val counts = (0..<sizeY).flatMap { curY ->
+            (0..<sizeX).map { curX ->
+                visited.clear()
+                if (!maze[curY][curX]) {
+                    // position is still free, place blocker
+                    val newMaze = cloneMazeWithObstacle(maze, curX, curY)
+                    val result = moveOne(newMaze, startX, startY, startDir, 0)
+                    if (result.second) { // loop found
+                        println("Loop generated")
+                        1
+                    } else {
+                        println("No loop generated")
+                        0
+                    }
+                } else {
+                    println("Position taken")
+                    0
+                }
+
+            }
+
+        }.sum()
+
+        return counts
     }
 
 
